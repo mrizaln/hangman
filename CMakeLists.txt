@@ -8,14 +8,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(fmt REQUIRED)
+find_package(CLI11 REQUIRED)
 
 include(cmake/fetched-libs.cmake)
 
 add_executable(main source/main.cpp)
 target_include_directories(main PRIVATE source)
-target_link_libraries(main PRIVATE fmt::fmt fetch::cppread)
+target_link_libraries(main PRIVATE fmt::fmt CLI11::CLI11 fetch::cppread)
 target_compile_options(main PRIVATE -Wall -Wextra -Wconversion)
 
 # sanitizer
-target_compile_options(main PRIVATE -fsanitize=address,leak,undefined)
-target_link_options(main PRIVATE -fsanitize=address,leak,undefined)
+if(CMAKE_BUILD_TYPE EQUAL Debug)
+  target_compile_options(main PRIVATE -fsanitize=address,leak,undefined)
+  target_link_options(main PRIVATE -fsanitize=address,leak,undefined)
+endif()

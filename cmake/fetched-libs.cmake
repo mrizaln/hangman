@@ -8,4 +8,5 @@ FetchContent_Declare(
   GIT_TAG 25fdd213ef352d1947b248e3bfedf70e6e2be701)
 FetchContent_MakeAvailable(cppread)
 
+message(STATUS "fetched-libs: created target 'fetch::cppread'")
 add_library(fetch::cppread ALIAS cppread)
