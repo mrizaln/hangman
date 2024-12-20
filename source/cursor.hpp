@@ -22,6 +22,12 @@ namespace hangman
             return *this;
         }
 
+        const Cursor& newline_flush() const
+        {
+            fmt::println("");
+            return *this;
+        }
+
         const Cursor& save() const
         {
             fmt::print("\033[s");

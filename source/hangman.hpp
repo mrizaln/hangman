@@ -4,6 +4,7 @@
 #include "cursor.hpp"
 
 #include <cppread/read.hpp>
+#include <fmt/std.h>
 
 #include <cstdlib>
 #include <filesystem>
@@ -12,6 +13,41 @@
 
 namespace hangman
 {
+    namespace error
+    {
+        struct Error : public std::runtime_error
+        {
+            Error(const std::string& msg)
+                : std::runtime_error{ msg }
+            {
+            }
+        };
+
+        struct NotEnoughWords : public Error
+        {
+            NotEnoughWords(const std::filesystem::path& path, usize count)
+                : Error{ fmt::format("The provided file '{}', does not have enough words: {}", path, count) }
+            {
+            }
+        };
+
+        struct StdinClosed : public Error
+        {
+            StdinClosed()
+                : Error{ "stdin closed" }
+            {
+            }
+        };
+
+        struct UnrecoverableError : public Error
+        {
+            UnrecoverableError()
+                : Error{ "stdin got into an unrecoverable error state" }
+            {
+            }
+        };
+    }
+
     enum class Difficulty
     {
         Normal,
@@ -44,7 +80,7 @@ namespace hangman
             auto used_chars     = std::set<char>{};
 
             print_init_scene();
-            m_cursor.move_vert(2).move_horz(14);
+            m_cursor.move_vert(2).move_horz(16);
 
             m_cursor.save();
 
@@ -79,11 +115,13 @@ namespace hangman
                 if (m_num_guesses == 0 or unique_letters.empty()) {
                     print_game_result(unique_letters.size());
                     auto line = fmt::format("┤ The word is: {} ├", word);
-                    m_cursor.move_vert(-2).move_horz(-14).println("{:─^77}", line);
+                    m_cursor.move_vert(-2).move_horz(-16).println("{:─^77}", line);
                     break;
                 }
             }
         }
+
+        void fix_cursor() const { m_cursor.restore().move_vert(-3).move_horz(-16); }
 
     private:
         std::string get_word() const
@@ -109,6 +147,10 @@ namespace hangman
                 words.push_back(lower(line) | sr::to<std::string>());
             }
 
+            if (words.size() < 10) {
+                throw error::NotEnoughWords{ m_word_list, words.size() };
+            }
+
             auto idx = util::random(0uz, words.size() - 1);
             return words[idx];
         }
@@ -119,7 +161,8 @@ namespace hangman
             if (result.is_error()) {
                 switch (result.error()) {
                 case cppread::Error::InvalidInput: return std::nullopt;
-                default: throw std::runtime_error{ "stdin got into an unrecoverable error state" };
+                case cppread::Error::EndOfFile: throw error::StdinClosed{};
+                default: throw error::UnrecoverableError{};
                 }
             }
             if (not std::isalpha(result.value())) {
@@ -158,17 +201,17 @@ namespace hangman
                 .println("│                                                                           │")
                 .println("│                                                                           │")
                 .println("├───────────────────────────────────────────────────────────────────────────┤")
-                .println("│ GUESS:                                                                    │")
+                .println("│ GUESS       :                                                             │")
                 .println("├───────────────────────────────────────────────────────────────────────────┤")
                 .println("│ Used guesses:                                                             │")
                 .println("├───────────────────────────────────────────────────────────────────────────┤")
-                .println("│ Your guess:                                                               │")
+                .println("│ Your guess  :                                                             │")
                 .println("└───────────────────────────────────────────────────────────────────────────┘");
         }
 
         void print_blank_word(std::string_view word)
         {
-            m_cursor.move_vert(4).move_horz(-3);
+            m_cursor.move_vert(4);
             for (auto c : word) {
                 m_cursor.print("{}", c == ' ' ? "  " : "░ ");
             }
@@ -181,11 +224,11 @@ namespace hangman
                 if (letter == ch) {
                     m_cursor.restore()
                         .move_vert(4)
-                        .move_horz(static_cast<isize>(offset * 2) - 3)
-                        .print("{}", letter)
-                        .restore();
+                        .move_horz(static_cast<isize>(offset * 2))
+                        .print("{}", letter);
                 }
             }
+            m_cursor.restore();
         }
 
         // print hang scene according to remaining guess trial
@@ -195,22 +238,21 @@ namespace hangman
 
             switch (m_num_guesses) {
             case 9: {
-                m_cursor.move_vert(7).move_horz(-12).println("###########################");
+                m_cursor.move_vert(7).move_horz(-12).print("###########################");
                 break;
             }
 
             case 8: {
                 m_cursor.move_vert(26).move_horz(1);
-                for (int i{ 0 }; i < 19; i++) {
+                for (auto _ : sv::iota(0uz, 19uz)) {
                     m_cursor.print("#");
                     m_cursor.move_vert(-1).move_horz(-1);
                 }
-                m_cursor.println("");
                 break;
             }
 
             case 7: {
-                m_cursor.move_vert(27).move_horz(1).println("########################################");
+                m_cursor.move_vert(27).move_horz(1).print("########################################");
                 break;
             }
 
@@ -220,73 +262,66 @@ namespace hangman
                     .move_vert(23) .move_horz(36) .print(" .$$$. ")
                     .move_vert(-1) .move_horz(-7) .print("$'   '$")
                     .move_vert(-1) .move_horz(-7) .print("$.   .$")
-                    .move_vert(-1) .move_horz(-7) .println(" *$$$* ");
+                    .move_vert(-1) .move_horz(-7) .print(" *$$$* ");
                 // clang-format on
                 break;
             }
 
             case 5: {
                 m_cursor.move_vert(19).move_horz(39);
-                for (int i{ 0 }; i < 6; i++) {
+                for (auto _ : sv::iota(0uz, 6uz)) {
                     m_cursor.print("$");
                     m_cursor.move_vert(-1).move_horz(-1);
                 }
-                m_cursor.println("^");
+                m_cursor.print("^");
                 break;
             }
 
             case 4: {
                 m_cursor.move_vert(19).move_horz(40).print("_");
-                for (int i{ 0 }; i < 3; i++) {
+                for (auto _ : sv::iota(0uz, 3uz)) {
                     m_cursor.move_vert(-1).move_horz(-1).print("^$.");
                 }
-                m_cursor.println("");
                 break;
             }
 
             case 3: {
                 m_cursor.move_vert(19).move_horz(38).print("_").move_horz(-2).move_vert(-1);
-                for (int i{ 0 }; i < 3; i++) {
+                for (auto _ : sv::iota(0uz, 3uz)) {
                     m_cursor.print(".$^");
                     m_cursor.move_vert(-1).move_horz(-5);
                 }
-                m_cursor.println("");
                 break;
             }
 
             case 2: {
                 m_cursor.move_vert(13).move_horz(40).print("$");
-                for (int i{ 0 }; i < 4; i++) {
+                for (auto _ : sv::iota(0uz, 4uz)) {
                     m_cursor.move_vert(-1).move_horz(-1).print("`$");
                 }
-                m_cursor.println("");
                 break;
             }
 
             case 1: {
                 m_cursor.move_vert(13).move_horz(38).print("$").move_vert(-1).move_horz(-2);
-                for (int i{ 0 }; i < 4; i++) {
+                for (auto _ : sv::iota(0uz, 4uz)) {
                     m_cursor.print("$`");
                     m_cursor.move_vert(-1).move_horz(-3);
                 }
-                m_cursor.println("");
                 break;
             }
 
             case 0: {
                 m_cursor.move_vert(26).move_horz(39);
-                for (int i{ 0 }; i < 3; i++) {
+                for (auto _ : sv::iota(0uz, 3uz)) {
                     m_cursor.print("|");
                     m_cursor.move_vert(-1).move_horz(-1);
                 }
-                m_cursor.println("");
                 break;
             }
-
-            default: return;
             }
 
-            m_cursor.restore();
+            m_cursor.newline_flush().restore();
         }
 
         void print_guess_result_notice(GuessKind kind)
@@ -297,13 +332,13 @@ namespace hangman
             switch (kind) {
 
             case GuessKind::Incorrect:
-                m_cursor.println("                                               INCORRECT │ {} ", guesses);
+                m_cursor.println("                                             INCORRECT │ {} ", guesses);
                 break;
             case GuessKind::Correct:
-                m_cursor.println("                                                 CORRECT │ {} ", guesses);
+                m_cursor.println("                                               CORRECT │ {} ", guesses);
                 break;
             case GuessKind::Invalid:
-                m_cursor.println("                                                 INVALID │ {} ", guesses);
+                m_cursor.println("                                               INVALID │ {} ", guesses);
                 break;
             }
 
@@ -314,7 +349,7 @@ namespace hangman
         {
             m_cursor.restore();
 
-            m_cursor.move_vert(2).move_horz(2);
+            m_cursor.move_vert(2);
             for (auto c : used_chars) {
                 m_cursor.print("{} ", c);
             }
