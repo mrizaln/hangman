@@ -14,7 +14,7 @@ include(cmake/fetched-libs.cmake)
 
 add_executable(main source/main.cpp)
 target_include_directories(main PRIVATE source)
-target_link_libraries(main PRIVATE fmt::fmt CLI11::CLI11 fetch::cppread)
+target_link_libraries(main PRIVATE fmt::fmt CLI11::CLI11 fetch::linr)
 target_compile_options(main PRIVATE -Wall -Wextra -Wconversion)
 
 # sanitizer

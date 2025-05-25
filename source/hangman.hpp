@@ -3,13 +3,13 @@
 #include "common.hpp"
 #include "cursor.hpp"
 
-#include <cppread/read.hpp>
 #include <fmt/std.h>
+#include <linr/read.hpp>
 
 #include <cstdlib>
 #include <filesystem>
-#include <set>
 #include <fstream>
+#include <set>
 
 namespace hangman
 {
@@ -157,11 +157,11 @@ namespace hangman
 
         std::optional<char> get_char()
         {
-            auto result = cppread::read<char>();
-            if (result.is_error()) {
+            auto result = linr::read<char>();
+            if (not result) {
                 switch (result.error()) {
-                case cppread::Error::InvalidInput: return std::nullopt;
-                case cppread::Error::EndOfFile: throw error::StdinClosed{};
+                case linr::Error::InvalidInput: return std::nullopt;
+                case linr::Error::EndOfFile: throw error::StdinClosed{};
                 default: throw error::UnrecoverableError{};
                 }
             }
@@ -359,7 +359,7 @@ namespace hangman
 
         void print_game_result(usize remaining_letters)
         {
-            m_cursor.restore().move_horz(-14).move_vert(21);
+            m_cursor.restore().move_horz(-16).move_vert(21);
 
             if (m_num_guesses == 0) {
                 m_cursor    //

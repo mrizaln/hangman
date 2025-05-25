@@ -3,10 +3,10 @@ set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
 
 FetchContent_Declare(
-  cppread
-  GIT_REPOSITORY https://github.com/mrizaln/cppread
-  GIT_TAG 25fdd213ef352d1947b248e3bfedf70e6e2be701)
-FetchContent_MakeAvailable(cppread)
+  linr
+  GIT_REPOSITORY https://github.com/mrizaln/linr
+  GIT_TAG v0.1.0)
+FetchContent_MakeAvailable(linr)
 
-message(STATUS "fetched-libs: created target 'fetch::cppread'")
-add_library(fetch::cppread ALIAS cppread)
+message(STATUS "fetched-libs: created target 'fetch::linr'")
+add_library(fetch::linr ALIAS linr)
